@@ -1,0 +1,57 @@
+# AlertManager configuration for Bank of Anthos Self-Healing Agent integration
+# This configuration should be added to your existing AlertManager setup
+
+global:
+  smtp_smarthost: 'localhost:587'
+  smtp_from: 'alertmanager@example.org'
+
+# Define route for Bank of Anthos alerts
+route:
+  group_by: ['alertname']
+  group_wait: 10s
+  group_interval: 10s
+  repeat_interval: 1h
+  receiver: 'web.hook'
+  routes:
+  # Route Bank of Anthos specific alerts to the self-healing agent
+  - match:
+      service: ~"(frontend|userservice|contacts|balancereader|ledgerwriter|transactionhistory|accounts-db|ledger-db)"
+    receiver: 'bank-of-anthos-webhook'
+  - match:
+      job: ~"(frontend|userservice|contacts|balancereader|ledgerwriter|transactionhistory)"
+    receiver: 'bank-of-anthos-webhook'
+  - match:
+      namespace: 'bank-of-anthos'
+    receiver: 'bank-of-anthos-webhook'
+
+receivers:
+- name: 'web.hook'
+  webhook_configs:
+  - url: 'http://127.0.0.1:5001/'
+
+# Bank of Anthos Self-Healing Agent webhook
+- name: 'bank-of-anthos-webhook'
+  webhook_configs:
+  - url: 'http://your-agent-service:8080/alertmanager/webhook'
+    send_resolved: true
+    http_config:
+      basic_auth:
+        username: 'alertmanager'
+        password: 'your-webhook-password'
+    title: 'Bank of Anthos Alert: {{ .GroupLabels.alertname }}'
+    text: |
+      Alert: {{ .GroupLabels.alertname }}
+      Service: {{ .CommonLabels.service }}
+      Severity: {{ .CommonLabels.severity }}
+      Summary: {{ .CommonAnnotations.summary }}
+      
+      {{ range .Alerts }}
+      {{ .Annotations.description }}
+      {{ end }}
+
+inhibit_rules:
+  - source_match:
+      severity: 'critical'
+    target_match:
+      severity: 'warning'
+    equal: ['alertname', 'dev', 'instance']
