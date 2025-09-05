@@ -58,6 +58,8 @@ The agent automatically processes alerts for these services:
 
 ## Architecture
 
+![ADK Self-Healing Agent Architecture](architecture_diagram%20.png)
+
 ```
 ┌───────────────────┐    ┌──────────────────┐    ┌──────────────────┐    ┌──────────────────┐
 │ User Interaction  │    │ Monitoring Agent │    │ Analysis Agent   │    │ Decision Agent   │
@@ -68,9 +70,9 @@ The agent automatically processes alerts for these services:
         │                          │                          │                   │
         ▼                          ▼                          ▼                   ▼
 ┌───────────────────┐    ┌──────────────────┐    ┌──────────────────┐    ┌──────────────────┐
-│ Alert Input       │    │ get_service_...  │    │ Insights Passed  │    │ scale_deployment │
-│ (Events/Alerts)   │    │ get_pod_status   │    │ to Decision      │    │ send_alert       │
-│                   │    │ get_service_logs │    │ Agent            │    │ Jira MCP Server  │
+│ Alert Input       │    │ get_service_...  │    │ get_service_...  │    │ scale_deployment │
+│ (Events/Alerts)   │    │ get_pod_status   │    │ Insights Passed  │    │ send_alert       │
+│                   │    │ get_service_logs │    │ to Decision      │    │ Jira MCP Server  │
 └───────────────────┘    └──────────────────┘    └──────────────────┘    └──────────────────┘
                                                                                   │
                                                                                   ▼
