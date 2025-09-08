@@ -85,6 +85,83 @@ The agent automatically processes alerts for these services:
 
 ```
 
+## Quick Start - Step-by-Step Deployment
+
+### Prerequisites
+
+- Google Cloud Project with billing enabled
+- `gcloud` CLI installed
+- `kubectl` installed
+- `docker` installed
+- Sufficient GCP quotas for GKE cluster
+
+### Initial Authentication Setup
+
+Before starting the deployment, authenticate with Google Cloud:
+
+```bash
+# 1. Login to Google Cloud
+gcloud auth login
+
+# 2. Set your project (replace with your actual project ID)
+gcloud config set project your-project-id
+
+# 3. Enable Application Default Credentials for local development
+gcloud auth application-default login
+
+# 4. Verify authentication
+gcloud auth list
+gcloud config get-value project
+```
+
+**Important**: Make sure you have the necessary permissions:
+- **Project Editor** or **Owner** role for the project
+- **Kubernetes Engine Admin** for GKE operations
+- **Storage Admin** for container registry operations
+- **Service Account Admin** for Workload Identity setup
+
+### Recommended Deployment Workflow
+
+
+```bash
+# Clone the repository
+git clone <repository-url>
+cd gke10-hackathon_adk
+
+# Step 1: Setup environment and enable APIs
+./deploy.sh setup --project-id=your-project-id
+
+# Step 2: Create GKE cluster (10-20 minutes)
+./deploy.sh cluster --project-id=your-project-id --cluster-name=my-cluster
+
+```
+
+⚠️ **Note:** If cluster creation times out with `[ERROR] Command timed out after 300 seconds: gcloud container clusters create-auto adk-cluster`, check if the cluster was actually created:
+
+```bash
+# Check if cluster exists
+gcloud container clusters list --project=your-project-id
+
+# If cluster exists, get credentials manually
+gcloud container clusters get-credentials adk-cluster --region=us-central1 --project=your-project-id
+```
+
+Sometimes cluster creation takes longer than the timeout but still succeeds. Always verify the cluster status before retrying.
+
+```bash
+# Step 3: Deploy Bank of Anthos
+./deploy.sh bank-of-anthos
+
+# Step 4: Build and push ADK agent image
+./deploy.sh build --project-id=your-project-id
+
+# Step 5: Deploy ADK agent
+./deploy.sh deploy
+
+# Step 6: Check deployment status
+./deploy.sh status
+```
+
 ### Real-World Workflow Implementation
 
 **Step 1: Alert Trigger**
@@ -140,58 +217,6 @@ receivers:
   - url: 'http://adk-agent.adk-agent.svc.cluster.local/alertmanager'
     http_config:
       timeout: 10s
-```
-
-## Quick Start - Step-by-Step Deployment
-
-### Prerequisites
-
-- Google Cloud Project with billing enabled
-- `gcloud` CLI installed and authenticated
-- `kubectl` installed
-- `docker` installed
-- Sufficient GCP quotas for GKE cluster
-
-### Recommended Deployment Workflow
-
-
-```bash
-# Clone the repository
-git clone <repository-url>
-cd gke10-hackathon_adk
-
-# Step 1: Setup environment and enable APIs
-./deploy.sh setup --project-id=your-project-id
-
-# Step 2: Create GKE cluster (10-20 minutes)
-./deploy.sh cluster --project-id=your-project-id --cluster-name=my-cluster
-
-```
-
-⚠️ **Note:** If cluster creation times out with `[ERROR] Command timed out after 300 seconds: gcloud container clusters create-auto adk-cluster`, check if the cluster was actually created:
-
-```bash
-# Check if cluster exists
-gcloud container clusters list --project=your-project-id
-
-# If cluster exists, get credentials manually
-gcloud container clusters get-credentials adk-cluster --region=us-central1 --project=your-project-id
-```
-
-Sometimes cluster creation takes longer than the timeout but still succeeds. Always verify the cluster status before retrying.
-
-```bash
-# Step 3: Deploy Bank of Anthos
-./deploy.sh bank-of-anthos
-
-# Step 4: Build and push ADK agent image
-./deploy.sh build --project-id=your-project-id
-
-# Step 5: Deploy ADK agent
-./deploy.sh deploy
-
-# Step 6: Check deployment status
-./deploy.sh status
 ```
 
 ### Testing AlertManager Integration
