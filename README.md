@@ -128,6 +128,10 @@ gcloud config get-value project
 git clone <repository-url>
 cd gke10-hackathon_adk
 
+# Configure environment variables
+cp env.example .env
+# Edit .env with your configuration (project ID, JIRA credentials, Slack webhooks, etc.)
+
 # Step 1: Setup environment and enable APIs
 ./deploy.sh setup --project-id=your-project-id
 
@@ -423,8 +427,8 @@ http://adk-agent.adk-agent.svc.cluster.local/alertmanager
 
 The ADK agent provides multiple interaction methods:
 
-### AlertManager Integration (Production)
-**Primary use case**: Real-time alert processing from Prometheus/AlertManager
+### AlertManager Integration
+Real-time alert processing from Prometheus/AlertManager
 ```bash
 # AlertManager sends webhooks to:
 POST http://adk-agent-service/alertmanager
@@ -444,21 +448,10 @@ kubectl port-forward -n adk-agent service/adk-agent 8080:80
 # Then visit: http://localhost:8080
 ```
 
-### Direct API Access
-```bash
-# Health check
-curl http://adk-agent-service/health
-
-# Root status
-curl http://adk-agent-service/
-
-# Test webhook (use test-alertmanager-webhooks.sh)
-./test-alertmanager-webhooks.sh
-```
 
 ## Demo Scenarios
 
-### Scenario 1: AlertManager Webhook Processing (Primary Use Case)
+### Scenario 1: AlertManager Webhook Processing
 1. **Alert Generation**: Prometheus detects CPU > 80% in Bank of Anthos frontend service
 2. **AlertManager Webhook**: Sends webhook to ADK agent `/alertmanager` endpoint
 3. **Session Management**: Agent creates or reuses persistent session for AlertManager
@@ -469,27 +462,13 @@ curl http://adk-agent-service/
    - **Full Mode (ON)**: Executes remediation (pod restart, scaling) + creates Jira ticket
 7. **Resolution Tracking**: Agent verifies resolution and updates incidents
 
-### Scenario 2: Local Development and Testing
-```bash
-# Test AlertManager webhook integration
-./test-alertmanager-webhooks.sh
 
-# Monitor agent processing in real-time
-kubectl logs -f deployment/adk-agent -n adk-agent
-
-# Check agent health and endpoints
-curl http://localhost:8080/health
-curl http://localhost:8080/
-```
-
-### Scenario 3: Manual Agent Testing via ADK Interface
+### Scenario 2: Manual Agent Testing via ADK Interface
 ```bash
 # Local development with ADK web interface
 python main.py
 # Visit: http://localhost:8080
 
-# Test agent configuration
-python test_vertex_ai.py
 ```
 
 ## Troubleshooting
@@ -535,8 +514,6 @@ kubectl exec -it deployment/adk-agent -n adk-agent -- python test_vertex_ai.py
 - ✅ **Health Endpoints**: Kubernetes-ready health checks and status endpoints
 - ✅ **Simple Autopilot Mode**: On/off toggle for safe vs full automation
 - ✅ **Step-by-Step Deployment**: Reliable deployment process (removed problematic `all` command)
-- ✅ **Production Ready**: GKE deployment with proper RBAC, IAM, and Workload Identity
-- ✅ **Comprehensive Testing**: AlertManager webhook test suite and validation scripts
 
 ## Technology Stack
 
@@ -585,77 +562,6 @@ kubectl exec -it deployment/adk-agent -n adk-agent -- python test_vertex_ai.py
 └── venv/                          # Python virtual environment (if using local dev)
 ```
 
-## 🔧 Troubleshooting AlertManager Integration
-
-### Common Issues
-
-#### 1. **Webhook Timeout Errors**
-```
-⏰ Timeout processing alert: HighCPUUsage
-```
-**Solution**: This is normal! The agent needs time (up to 2 minutes) to collect real metrics and logs from Kubernetes and Google Cloud. The alert is still being processed in the background.
-
-**Verification**: Check the console for:
-```
-✅ Background alert processing completed
-🌐 Full response available at: http://localhost:8080/apps/...
-```
-
-#### 2. **Instance Name Validation Failures**
-```
-⏭️ Skipping non-Bank of Anthos service. Labels: {'instance': 'invalid-pod-name'}
-```
-**Solution**: Ensure your alert `instance` field contains actual pod names from your GKE cluster:
-- ✅ Good: `frontend-7f585f45df-5xsx5:8080`
-- ✅ Good: `accounts-db-0`
-- ❌ Bad: `fake-pod-name` or generic hostnames
-
-**Check your pods**: `kubectl get pods -n bank-of-anthos`
-
-#### 3. **Session Not Found in Web UI**
-**Solution**: The session is created automatically. If you don't see results in the web UI:
-
-1. **Check session creation**:
-```bash
-python test-web-ui.py
-```
-
-2. **Verify the direct session URL**:
-```
-http://localhost:8080/apps/adk_self_healing_agent/users/alertmanager-system/sessions/alertmanager-persistent-session
-```
-
-3. **Restart the server** if sessions aren't persisting:
-```bash
-python main.py
-```
-
-#### 4. **Authentication Errors (Google Cloud)**
-```
-❌ Failed to create AlertManager session: google.auth.exceptions.TransportError
-```
-**Solution**: The agent gracefully falls back to Kubernetes-only mode. Ensure your GKE cluster authentication is working:
-```bash
-gcloud container clusters get-credentials CLUSTER_NAME --zone=ZONE --project=PROJECT_ID
-kubectl get pods  # Should work without errors
-```
-
-#### 5. **No Alerts Being Processed**
-**Verification Steps**:
-
-1. **Test webhook endpoint**:
-```bash
-curl -s http://localhost:8080/health | jq
-```
-
-2. **Check service filtering**:
-The agent only processes these Bank of Anthos services:
-- `frontend`, `userservice`, `contacts`
-- `balancereader`, `ledgerwriter`, `transactionhistory`
-- `loadgenerator`, `accounts-db`, `ledger-db`
-
-3. **Verify alert format** matches the example curl command above
-
 ### Debug Mode
 
 Enable verbose logging by checking the console output:
@@ -675,14 +581,8 @@ Enable verbose logging by checking the console output:
 ```bash
 # Test all endpoints
 curl -s http://localhost:8080/health | jq
-curl -s http://localhost:8080/status | jq
 curl -s http://localhost:8080/ | jq
 
-# Test session creation
-python test-web-ui.py
-
-# Test alert processing
-python test-alertmanager.py
 ```
 
 ## Contributing
